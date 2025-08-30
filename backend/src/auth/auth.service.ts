@@ -1,4 +1,4 @@
-// src/auth/auth.service.ts
+// backend/src/auth/auth.service.ts
 
 import {
   Injectable,
@@ -12,6 +12,7 @@ import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterMerchantDto } from './dto/register-merchant.dto';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -27,7 +28,6 @@ export class AuthService {
       throw new UnauthorizedException('Email ou mot de passe invalide');
     }
 
-    // CORRECTION 1 : Utiliser hashedPassword
     const isMatch = await bcrypt.compare(
       loginDto.password,
       user.hashedPassword,
@@ -36,29 +36,32 @@ export class AuthService {
       throw new UnauthorizedException('Email ou mot de passe invalide');
     }
 
-    const payload = { username: user.username, sub: user.id, role: user.role }; // Ajout du rôle dans le token
+    const payload = {
+      username: user.username,
+      sub: user.id,
+      role: user.role,
+    };
     return {
       access_token: this.jwtService.sign(payload),
     };
   }
 
-  async register(createUserDto: CreateUserDto) {
-    const { email, password, ...rest } = createUserDto;
-
+  async register(
+    createUserDto: CreateUserDto,
+  ): Promise<Omit<User, 'hashedPassword'>> {
+    const { password, ...rest } = createUserDto;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await this.usersService.createUser({
       ...rest,
-      email,
-      // CORRECTION 2 : Utiliser hashedPassword
       hashedPassword: hashedPassword,
     });
 
-    // CORRECTION 3 : Utiliser hashedPassword
-    const { hashedPassword: _, ...result } = user; // Renommé pour la déstructuration
+    const { hashedPassword: _, ...result } = user;
     return result;
   }
 
+  // --- FONCTION CORRIGÉE ---
   async registerMerchant(registerMerchantDto: RegisterMerchantDto) {
     const { name, address, category, ...userData } = registerMerchantDto;
 
@@ -70,11 +73,14 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(userData.password, 10);
 
     return this.prisma.$transaction(async (tx) => {
+      // CORRECTION : On retire le mot de passe en clair (`password`) des données
+      // avant de les envoyer à la base de données.
+      const { password, ...restUserData } = userData;
+
       const user = await tx.user.create({
         data: {
-          ...userData,
-          // CORRECTION 4 : Utiliser hashedPassword
-          hashedPassword: hashedPassword,
+          ...restUserData, // On utilise les données sans le mot de passe en clair
+          hashedPassword: hashedPassword, // On ajoute le mot de passe chiffré
           role: 'MERCHANT',
         },
       });
@@ -88,7 +94,9 @@ export class AuthService {
         },
       });
 
-      return { user, merchant };
+      // On retire le mot de passe chiffré de la réponse pour la sécurité
+      const { hashedPassword: _, ...userResult } = user;
+      return { user: userResult, merchant };
     });
   }
 }

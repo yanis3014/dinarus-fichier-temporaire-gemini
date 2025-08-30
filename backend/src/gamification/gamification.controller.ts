@@ -1,4 +1,11 @@
-import { Controller, Get, Request, UseGuards } from '@nestjs/common';
+// backend/src/gamification/gamification.controller.ts
+import {
+  Controller,
+  Get,
+  UseGuards,
+  Request,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { GamificationService } from './gamification.service';
 
@@ -9,15 +16,17 @@ export class GamificationController {
   @UseGuards(AuthGuard('jwt'))
   @Get('profile')
   getProfile(@Request() req) {
-    const userId = req.user.sub;
-    return this.gamificationService.getProfile(userId);
-  }
+    // On s'assure que req.user et req.user.sub existent.
+    const userId = req.user?.sub;
 
-  @Get('missions')
-  @UseGuards(AuthGuard('jwt'))
-  listMissions(@Request() req) {
-    const userId = req.user.sub;
-    // CORRIGÉ : Assurez-vous que cette ligne appelle la bonne fonction
-    return this.gamificationService.listUserMissions(userId);
+    if (!userId) {
+      // Si on ne trouve pas d'ID, c'est une erreur d'authentification
+      throw new UnauthorizedException(
+        "Impossible de trouver l'ID utilisateur dans le token.",
+      );
+    }
+
+    // On passe l'ID de l'utilisateur au service.
+    return this.gamificationService.getProfile(userId);
   }
 }

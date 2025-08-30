@@ -1,32 +1,32 @@
-// dinary-temp/dinarus-backend/src/auth/jwt.strategy.ts
-
+// backend/src/auth/jwt.strategy.ts
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private configService: ConfigService) {
-    const secret = configService.get<string>('JWT_SECRET');
+  constructor() {
+    const jwtSecret = process.env.JWT_SECRET;
 
-    // Vérification explicite : si le secret n'existe pas, on lève une erreur claire.
-    if (!secret) {
-      throw new UnauthorizedException('La clé secrète JWT est manquante.');
+    // On vérifie que la clé secrète existe bien.
+    if (!jwtSecret) {
+      throw new Error("La variable d'environnement JWT_SECRET est manquante.");
     }
 
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: secret, // Utiliser la variable "secret" qui est maintenant garantie d'être un string
+      secretOrKey: jwtSecret, // On utilise notre variable vérifiée
     });
   }
 
   async validate(payload: any) {
-    // Le `payload` contient les données que nous avons signées dans `auth.service.ts`
-    // On peut s'en servir pour récupérer l'utilisateur dans la base de données si besoin
+    if (!payload || !payload.sub) {
+      throw new UnauthorizedException('Token invalide ou corrompu.');
+    }
+    // Ce que cette fonction retourne sera placé dans `req.user`
     return {
-      userId: payload.sub,
+      sub: payload.sub, // 'sub' est l'ID de l'utilisateur
       username: payload.username,
       role: payload.role,
     };

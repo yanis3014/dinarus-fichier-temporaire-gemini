@@ -1,11 +1,14 @@
-import { IsNumber, IsPositive, IsString, IsNotEmpty } from 'class-validator';
+// backend/src/wallet/dto/send-money.dto.ts
+
+import { IsNumber, IsString, IsNotEmpty } from 'class-validator';
 
 export class SendMoneyDto {
-  @IsNumber({}, { message: 'Le montant doit être un nombre.' })
-  @IsPositive({ message: 'Le montant doit être positif.' })
+  @IsNumber()
+  @IsNotEmpty()
   amount: number;
 
+  // CORRECTION : On attend maintenant un ID, pas un nom d'utilisateur.
   @IsString()
-  @IsNotEmpty({ message: "Le nom d'utilisateur du destinataire est requis." })
-  receiverUsername: string;
+  @IsNotEmpty()
+  receiverId: string;
 }

@@ -38,16 +38,22 @@ export class GamificationService {
 
   // --- Fonctions de base du profil ---
   async getProfile(userId: string) {
+    // Il reçoit maintenant le userId
+    // Correction ici : on utilise le userId pour trouver le bon profil
     let profile = await this.prisma.userProfile.findUnique({
-      where: { userId },
+      where: {
+        userId: userId,
+      },
     });
 
+    // Si le profil n'existe pas, on le crée
     if (!profile) {
-      console.log(
-        `Aucun profil trouvé pour l'utilisateur ${userId}, création en cours...`,
-      );
       profile = await this.prisma.userProfile.create({
-        data: { userId },
+        data: {
+          userId: userId,
+          level: 1,
+          xp: 0,
+        },
       });
     }
     return profile;

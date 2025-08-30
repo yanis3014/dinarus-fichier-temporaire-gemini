@@ -61,7 +61,7 @@ export class RequestsService {
       // Utiliser la logique de transfert du WalletService
       await this.walletService.sendMoney(payerId, {
         amount: moneyRequest.amount,
-        receiverUsername: moneyRequest.requester.username, // On utilise l'info récupérée
+        receiverId: moneyRequest.requester.id, // CORRECTION : On envoie l'ID, pas le username
       });
 
       return this.prisma.moneyRequest.update({
